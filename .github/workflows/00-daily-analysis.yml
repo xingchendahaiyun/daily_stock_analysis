@@ -1,4 +1,4 @@
-TRADING_DAYname: 每日股票分析
+  TRADING_DAYname: 每日股票分析
 
 on:
   schedule:
