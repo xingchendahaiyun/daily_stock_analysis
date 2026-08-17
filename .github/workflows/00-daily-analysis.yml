@@ -1,6 +1,17 @@
 TRADING_DAYname: 每日股票分析
 
 on:
+  schedule:
+    - cron: '0 10 * * *'
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Workflow restored successfully"
+FIXED_WORKFLOW_CONTENT_MARKER_99999TRADING_DAYname: 每日股票分析
+
+on:
   # 定时触发 - 每天北京时间 18:00 (UTC 10:00)
   schedule:
     - cron: '0 10 * * 1-5'→ Runs at 10:00, Monday through Friday     # 周一到周五，UTC
