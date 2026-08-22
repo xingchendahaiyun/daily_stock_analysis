@@ -33,6 +33,10 @@ _provider_is_us_index_code = _load_optional_provider_attr(
     "data_provider.us_index_mapping",
     "is_us_index_code",
 )
+_provider_is_crypto_code = _load_optional_provider_attr(
+    "data_provider.us_index_mapping",
+    "is_crypto_code",
+)
 
 
 # Known exchange prefixes (case-insensitive) and the digit lengths they accept.
@@ -195,7 +199,7 @@ def _normalize_explicit_exchange_parts(
 
 
 def is_code_like(value: str) -> bool:
-    """Check if string looks like a stock code (5-6 digits, 1-5 letters, or prefixed code)."""
+    """Check if string looks like a stock code (5-6digits, 1-5 letters, crypto, or prefixed code)."""
     text = value.strip().upper()
     if not text:
         return False
@@ -205,6 +209,9 @@ def is_code_like(value: str) -> bool:
     if explicit_parts is not None:
         return _normalize_explicit_exchange_parts(explicit_parts) is not None
     if re.match(r"^[A-Z]{1,5}(?:\.(?:US|[A-Z]))?$", text):
+        return True
+    # 加密货币代码：如 BTC-USD、ETH-USD
+    if _provider_is_crypto_code and _provider_is_crypto_code(text):
         return True
     return False
 
@@ -228,6 +235,9 @@ def _normalize_code_and_exchange(raw: str) -> tuple[Optional[str], str]:
     if not text:
         return None, ""
     if text.isdigit() and len(text) in (5, 6):
+        return text, ""
+    # 加密货币代码：如 BTC-USD、ETH-USD，直接返回（已是 Yahoo Finance 原生格式）
+    if _provider_is_crypto_code and _provider_is_crypto_code(text):
         return text, ""
     explicit_parts = _split_explicit_exchange(text)
     explicit_exchange = explicit_parts[0] if explicit_parts is not None else ""

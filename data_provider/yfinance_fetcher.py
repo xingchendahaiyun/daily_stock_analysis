@@ -33,7 +33,7 @@ from tenacity import (
 
 from .base import BaseFetcher, DataFetchError, STANDARD_COLUMNS, is_bse_code
 from .realtime_types import UnifiedRealtimeQuote, RealtimeSource
-from .us_index_mapping import get_us_index_yf_symbol, is_us_stock_code
+from .us_index_mapping import get_us_index_yf_symbol, is_us_stock_code, is_crypto_code
 from .yfinance_fundamental_adapter import _safe_float
 from src.services.market_symbol_utils import get_suffix_market, is_suffix_market_symbol
 
@@ -125,6 +125,11 @@ class YfinanceFetcher(BaseFetcher):
         if yf_symbol:
             logger.debug(f"识别为美股指数: {code} -> {yf_symbol}")
             return yf_symbol
+
+        # 加密货币：BTC-USD、ETH-USD 等格式，已经是 Yahoo Finance 原生格式，直接返回
+        if is_crypto_code(code):
+            logger.debug(f"识别为加密货币代码: {code}")
+            return code
 
         # 美股：1-5 个大写字母（可选 .X 后缀），原样返回
         if is_us_stock_code(code):
@@ -534,6 +539,11 @@ class YfinanceFetcher(BaseFetcher):
         """
         return is_us_stock_code(stock_code)
 
+    @staticmethod
+    def _is_crypto(stock_code: str) -> bool:
+        """判断代码是否为加密货币（如 BTC-USD、ETH-USD）。"""
+        return is_crypto_code(stock_code)
+
     def _get_us_stock_quote_from_stooq(self, stock_code: str) -> Optional[UnifiedRealtimeQuote]:
         """
         使用 Stooq 为美股实时行情提供免密钥兜底。
@@ -793,13 +803,14 @@ class YfinanceFetcher(BaseFetcher):
 
     def get_realtime_quote(self, stock_code: str) -> Optional[UnifiedRealtimeQuote]:
         """
-        获取美股/美股指数实时行情数据
+        获取美股/美股指数/加密货币/日韩台股票实时行情数据
 
-        支持美股股票（AAPL、TSLA）和美股指数（SPX、DJI 等）。
+        支持美股股票（AAPL、TSLA）、美股指数（SPX、DJI 等）、
+        加密货币（BTC-USD、ETH-USD 等）以及日韩台 suffix 股票。
         数据来源：yfinance Ticker.info
 
         Args:
-            stock_code: 美股代码或指数代码，如 'AMD', 'AAPL', 'SPX', 'DJI'
+            stock_code: 代码，如 'AMD', 'AAPL', 'SPX', 'DJI', 'BTC-USD', '7203.T'
 
         Returns:
             UnifiedRealtimeQuote 对象，获取失败返回 None
@@ -815,13 +826,15 @@ class YfinanceFetcher(BaseFetcher):
                 index_name=index_name,
             )
 
-        # 仅处理美股股票或 JP/KR/TW suffix-only 股票
+        # 处理美股股票、加密货币或 JP/KR/TW suffix-only 股票
+        is_crypto = self._is_crypto(stock_code)
         if not (
             self._is_us_stock(stock_code)
+            or is_crypto
             or self._is_jp_kr_suffix_stock(stock_code)
             or self._is_tw_suffix_stock(stock_code)
         ):
-            logger.debug(f"[Yfinance] {stock_code} 不是美股或日韩 suffix 代码，跳过")
+            logger.debug(f"[Yfinance] {stock_code} 不是美股/加密货币或日韩台 suffix 代码，跳过")
             return None
 
         try:
@@ -911,7 +924,7 @@ class YfinanceFetcher(BaseFetcher):
                 code=symbol,
                 name=name,
                 source=RealtimeSource.FALLBACK,
-                market=suffix_market or ("us" if is_us_symbol else None),
+                market=suffix_market or ("crypto" if is_crypto else ("us" if is_us_symbol else None)),
                 currency=str(ticker_info.get("currency") or "").upper() or None,
                 data_quality="partial" if missing_fields else "ok",
                 missing_fields=missing_fields or None,

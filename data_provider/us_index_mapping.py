@@ -16,6 +16,10 @@ import re
 # 美股代码正则：1-5 个大写字母，可选 .X 后缀（如 BRK.B）
 _US_STOCK_PATTERN = re.compile(r'^[A-Z]{1,5}(\.[A-Z])?$')
 
+# 加密货币代码正则：如 BTC-USD、ETH-USD、BTC-USDT 等
+# Yahoo Finance 使用 BASE-QUOTE 格式，常见对 USD、USDT、EUR、GBP 等
+_CRYPTO_PATTERN = re.compile(r'^[A-Z]{2,10}-(USD|USDT|EUR|GBP|JPY|CNY|BTC|ETH)$')
+
 
 # 用户输入 -> (Yahoo Finance 符号, 中文名称)
 US_INDEX_MAPPING = {
@@ -112,3 +116,31 @@ def get_us_index_yf_symbol(code: str) -> tuple:
     """
     normalized = (code or '').strip().upper()
     return US_INDEX_MAPPING.get(normalized, (None, None))
+
+
+def is_crypto_code(code: str) -> bool:
+    """
+    判断代码是否为加密货币符号（Yahoo Finance 格式）。
+
+    加密货币代码格式：BASE-QUOTE，如 BTC-USD、ETH-USD、BNB-USDT 等。
+
+    Args:
+        code: 代码，如 'BTC-USD', 'ETH-USD', 'BNB-USDT'
+
+    Returns:
+        True 表示是加密货币符号，否则 False
+
+    Examples:
+        >>> is_crypto_code('BTC-USD')
+        True
+        >>> is_crypto_code('ETH-USDT')
+        True
+        >>> is_crypto_code('AAPL')
+        False
+        >>> is_crypto_code('600519')
+        False
+    """
+    normalized = (code or '').strip().upper()
+    if normalized in US_INDEX_MAPPING:
+        return False
+    return bool(_CRYPTO_PATTERN.match(normalized))

@@ -160,6 +160,14 @@ def _is_us_market(code: str) -> bool:
     return is_us_index_code(normalized) or is_us_stock_code(normalized)
 
 
+def _is_crypto_market(code: str) -> bool:
+    """判断是否为加密货币代码（Yahoo Finance 格式，如 BTC-USD、ETH-USD）。"""
+    from .us_index_mapping import is_crypto_code
+
+    normalized = (code or "").strip().upper()
+    return is_crypto_code(normalized)
+
+
 def _is_hk_market(code: str) -> bool:
     """
     判定是否为港股代码。
@@ -240,7 +248,9 @@ def _is_meaningful_chip_distribution(chip: Any) -> bool:
 
 
 def _market_tag(code: str) -> str:
-    """返回市场标签: cn/us/hk/jp/kr/tw."""
+    """返回市场标签: cn/us/hk/jp/kr/tw/crypto."""
+    if _is_crypto_market(code):
+        return "crypto"
     if _is_us_market(code):
         return "us"
     if _is_hk_market(code):
@@ -623,7 +633,7 @@ class DataFetcherManager:
         "TickFlowFetcher": {"cn"},
         "PytdxFetcher": {"cn"},
         "BaostockFetcher": {"cn"},
-        "YfinanceFetcher": {"cn", "hk", "us", "jp", "kr", "tw"},
+        "YfinanceFetcher": {"cn", "hk", "us", "jp", "kr", "tw", "crypto"},
         "LongbridgeFetcher": {"hk", "us"},
         "FinnhubFetcher": {"us"},
         "AlphaVantageFetcher": {"us"},
